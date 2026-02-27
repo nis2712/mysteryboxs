@@ -1,0 +1,985 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Fun Surprise Box</title>
+<style>
+  :root{
+    --bg1:#74ebd5;
+    --bg2:#acb6e5;
+    --card:#ffffff;
+    --shadow: 0 10px 22px rgba(0,0,0,.18);
+    --pick: rgba(255,215,0,.9);
+    --open:#ffeaa7;
+    --text:#2d3436;
+    --btn:#ff7675;
+    --btn2:#55efc4;
+    --panel: rgba(255,255,255,.78);
+    --panel2: rgba(255,255,255,.58);
+  }
+
+  body{
+    margin:0;
+    font-family:'Comic Sans MS', Arial, sans-serif;
+    background:linear-gradient(135deg,var(--bg1),var(--bg2));
+    text-align:center;
+    overflow-x:hidden;
+    overflow-y:auto;
+  }
+  body.modal-open{ overflow:hidden; }
+
+  h1{
+    margin:16px 0 8px;
+    color:white;
+    text-shadow:2px 2px 6px rgba(0,0,0,.22);
+  }
+  .note{
+    color:white;
+    font-weight:900;
+    text-shadow:2px 2px 6px rgba(0,0,0,.18);
+    margin-bottom:8px;
+  }
+
+  .topbar{
+    display:flex;
+    justify-content:center;
+    gap:10px;
+    flex-wrap:wrap;
+    padding:6px 12px 10px;
+  }
+
+  .mode-btn, .ctrl-btn{
+    padding:10px 18px;
+    border:none;
+    border-radius:18px;
+    font-size:15px;
+    font-weight:1000;
+    cursor:pointer;
+    color:white;
+    box-shadow:0 6px 14px rgba(0,0,0,.18);
+    transition:transform .15s ease, filter .15s ease;
+  }
+  .mode-btn:hover, .ctrl-btn:hover{ transform:translateY(-1px) scale(1.02); filter:brightness(1.03); }
+  .mode-btn.active{ outline:3px solid rgba(255,255,255,.7); }
+
+  .royal{ background:#3498db; }
+  .tajir{ background:#e84393; }
+  .premini{ background:#f39c12; }
+  .guards{ background:#8e44ad; }
+  .infi{ background:#2d3436; }
+
+  .ctrl-btn{ background:var(--btn); }
+  .ctrl-btn:disabled{ opacity:.55; cursor:not-allowed; transform:none; filter:none; }
+
+  .gridWrap{
+    width: min(760px, 96vw);
+    margin: 0 auto;
+    position:relative;
+  }
+
+  .grid{
+    --cols: 5;
+    display:grid;
+    grid-template-columns:repeat(var(--cols),110px);
+    gap:14px;
+    justify-content:center;
+    padding:14px 12px 26px;
+    position:relative;
+  }
+
+  .box{
+    background:var(--card);
+    border-radius:22px;
+    padding:14px 10px;
+    cursor:pointer;
+    box-shadow:var(--shadow);
+    transition:transform .16s ease, filter .16s ease;
+    position:relative;
+    min-height:96px;
+    display:flex;
+    flex-direction:column;
+    justify-content:flex-start;
+    align-items:center;
+    transform: translateZ(0);
+  }
+  .box:hover{ transform:translateY(-2px) scale(1.02); filter:brightness(1.02); }
+  .box.disabled{ cursor:not-allowed; }
+  .box.disabled:hover{ transform:none; filter:none; }
+
+  .num{
+    font-size:20px;
+    font-weight:1000;
+    color:var(--text);
+    line-height:1;
+  }
+
+  .gift{ margin-top:10px; display:none; width:100%; }
+  .giftImg{
+    width:64px; height:64px;
+    object-fit:contain;
+    filter: drop-shadow(0 6px 10px rgba(0,0,0,.18));
+    opacity:0;
+    transform: translateY(6px) scale(.98);
+  }
+  .giftName{
+    margin-top:6px;
+    font-size:12px;
+    font-weight:1000;
+    color:var(--text);
+    opacity:0;
+    transform: translateY(6px);
+  }
+
+  .box.revealed{ background:var(--open); }
+  .box.revealed .gift{ display:block; }
+
+  .box.revealed .giftImg,
+  .box.revealed .giftName{
+    animation: revealPop .45s cubic-bezier(.2,.85,.2,1) forwards;
+    animation-delay: var(--d);
+    will-change: transform, opacity;
+  }
+  @keyframes revealPop{
+    to{ opacity:1; transform: translateY(0) scale(1); }
+  }
+
+  .box.picked{
+    outline:4px solid rgba(255,215,0,.85);
+    box-shadow: 0 10px 22px rgba(0,0,0,.22), 0 0 0 6px rgba(255,215,0,.18);
+  }
+  .tag{
+    position:absolute;
+    top:10px; right:10px;
+    background:var(--pick);
+    color:var(--text);
+    font-weight:1000;
+    font-size:11px;
+    padding:4px 8px;
+    border-radius:999px;
+    display:none;
+  }
+  .box.picked .tag{ display:block; }
+
+  .shuffling .box{
+    animation: shuffleShake .42s ease-in-out infinite;
+    filter: blur(.2px) brightness(1.02);
+  }
+  @keyframes shuffleShake{
+    0%{ transform:translate(0,0) rotate(0deg); }
+    25%{ transform:translate(-3px,2px) rotate(-1.8deg); }
+    50%{ transform:translate(3px,-2px) rotate(1.8deg); }
+    75%{ transform:translate(-2px,-2px) rotate(-1deg); }
+    100%{ transform:translate(0,0) rotate(0deg); }
+  }
+  .shuffleOverlay{
+    position:absolute;
+    inset:0;
+    background:rgba(255,255,255,.68);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    font-size:30px;
+    font-weight:1000;
+    color:#111;
+    backdrop-filter: blur(4px);
+    z-index:10;
+    border-radius:18px;
+    pointer-events:none;
+  }
+  .dots{ display:inline-flex; gap:6px; align-items:center; }
+  .dot{
+    width:10px;height:10px;border-radius:999px;
+    background:#111;
+    opacity:.25;
+    animation: dotPulse 1s infinite;
+  }
+  .dot:nth-child(2){ animation-delay:.15s; }
+  .dot:nth-child(3){ animation-delay:.3s; }
+  @keyframes dotPulse{
+    0%,100%{ opacity:.25; transform:translateY(0); }
+    50%{ opacity:.9; transform:translateY(-4px); }
+  }
+
+  .flash{
+    outline:4px solid rgba(255,255,255,.9);
+    box-shadow: 0 12px 26px rgba(0,0,0,.22), 0 0 0 6px rgba(255,255,255,.18);
+    transform: translateY(-3px) scale(1.03);
+  }
+
+  .grid.dim-other .box:not(.picked){
+    filter: blur(2px) brightness(.72);
+    transform: scale(.98);
+  }
+  .box.final-focus{
+    transform:scale(1.12);
+    z-index:6;
+    box-shadow: 0 14px 30px rgba(0,0,0,.28), 0 0 0 8px rgba(255,215,0,.22), 0 0 28px rgba(255,215,0,.55);
+  }
+
+  .popup{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.45);
+    display:none;
+    justify-content:center;
+    align-items:center;
+    padding:16px;
+    z-index:50;
+  }
+  .popup-content{
+    background:white;
+    padding:22px 18px;
+    border-radius:26px;
+    max-width:520px;
+    width:100%;
+    box-shadow:0 18px 40px rgba(0,0,0,.35);
+    animation: pop .35s ease;
+    position:relative;
+  }
+  @keyframes pop{
+    0%{ transform:scale(0.7); opacity:0; }
+    100%{ transform:scale(1); opacity:1; }
+  }
+  .popup h2{
+    margin:0 0 10px;
+    color:var(--btn);
+    font-size:28px;
+  }
+  .popupPrizeImg{
+    width:150px;height:150px;object-fit:contain;
+    border-radius:20px;
+    box-shadow:0 10px 22px rgba(0,0,0,.18);
+    background:#fff;
+  }
+  .popupPrizeName{
+    margin:12px 0 0;
+    font-size:22px;
+    font-weight:1000;
+    color:var(--text);
+  }
+  .close-btn{
+    margin-top:16px;
+    padding:10px 18px;
+    border:none;
+    border-radius:18px;
+    font-size:16px;
+    font-weight:1000;
+    cursor:pointer;
+    background:var(--btn2);
+    color:var(--text);
+  }
+
+  .popup-content.secret-mode{
+    animation: secretPulse 1.1s ease-in-out infinite alternate;
+  }
+  @keyframes secretPulse{
+    from{ box-shadow:0 18px 40px rgba(0,0,0,.35), 0 0 18px rgba(255,0,255,.35); }
+    to{ box-shadow:0 18px 40px rgba(0,0,0,.35), 0 0 32px rgba(0,255,255,.45); }
+  }
+  .secretBadge{
+    position:absolute;
+    top:14px; right:14px;
+    padding:6px 10px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:1000;
+    background:linear-gradient(90deg,#ff00ff,#00ffff);
+    color:white;
+    display:none;
+  }
+  .popup-content.secret-mode .secretBadge{ display:inline-block; }
+
+  .adminWrap{
+    width:min(980px, 96vw);
+    margin:14px auto 28px;
+    text-align:left;
+    background:rgba(255,255,255,.88);
+    border-radius:18px;
+    padding:14px;
+    box-shadow:var(--shadow);
+  }
+  .adminHeader{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  .adminHeader h2{ margin:0; color:#111; }
+  .adminHeader .small{ font-size:12px; font-weight:900; color:#333; opacity:.85; }
+  .adminBtns{ display:flex; gap:8px; flex-wrap:wrap; }
+  .aBtn{
+    border:none;
+    border-radius:14px;
+    padding:10px 12px;
+    font-weight:1000;
+    cursor:pointer;
+    background:#111;
+    color:#fff;
+  }
+  .aBtn.alt{ background:#3b82f6; }
+  .aBtn.good{ background:#22c55e; }
+  .aBtn.warn{ background:#ff7675; }
+
+  .tabs{ display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+  .tab{
+    padding:10px 12px;
+    border-radius:14px;
+    border:2px solid rgba(0,0,0,.12);
+    cursor:pointer;
+    font-weight:1000;
+    background:#fff;
+  }
+  .tab.active{
+    border-color: rgba(0,0,0,.35);
+    box-shadow:0 6px 14px rgba(0,0,0,.10);
+  }
+
+  .rows{ margin-top:12px; display:flex; flex-direction:column; gap:10px; }
+
+  .row{
+    display:grid;
+    grid-template-columns: 110px 1fr 320px;
+    gap:10px;
+    align-items:center;
+    padding:10px;
+    border-radius:16px;
+    background:#fff;
+    border:2px solid rgba(0,0,0,.08);
+  }
+
+  .thumb{
+    width:110px;height:70px;
+    border-radius:14px;
+    background:rgba(0,0,0,.06);
+    display:flex;align-items:center;justify-content:center;
+    overflow:hidden;
+  }
+  .thumb img{ width:100%;height:100%;object-fit:contain; }
+
+  .in{
+    width:100%;
+    padding:10px 12px;
+    border-radius:14px;
+    border:2px solid rgba(0,0,0,.12);
+    font-weight:900;
+  }
+  .mini{ font-size:12px; font-weight:900; opacity:.8; margin-top:6px; }
+
+  .rightPack{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    justify-content:flex-end;
+    flex-wrap:wrap;
+  }
+  .countWrap{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+    gap:4px;
+    min-width:120px;
+  }
+  .countLabel{
+    font-size:12px;
+    font-weight:1000;
+    opacity:.85;
+  }
+  .countHint{
+    font-size:12px;
+    font-weight:1000;
+    opacity:.75;
+  }
+  .count{
+    width:120px;
+    padding:10px 12px;
+    border-radius:14px;
+    border:2px solid rgba(0,0,0,.12);
+    font-weight:1000;
+    text-align:center;
+  }
+
+  .del{
+    border:none;
+    border-radius:14px;
+    padding:10px 12px;
+    cursor:pointer;
+    font-weight:1000;
+    background:#ef4444;
+    color:#fff;
+  }
+  .help{
+    margin-top:10px;
+    font-size:12px;
+    font-weight:900;
+    color:#111;
+    opacity:.85;
+    line-height:1.4;
+  }
+</style>
+</head>
+<body>
+
+<audio id="sfxWin" src="win.mp3" preload="auto"></audio>
+<audio id="sfxSecret" src="secret.mp3" preload="auto"></audio>
+
+<!-- OVERLAY UI -->
+<div id="overlayUI">
+  <h1>🎁 FUN SURPRISE BOX 🎁</h1>
+  <div class="note" id="modeNote">Mode: ROYAL (5R)</div>
+
+  <div class="topbar">
+    <button class="mode-btn royal active" data-mode="royal">ROYAL</button>
+    <button class="mode-btn tajir" data-mode="tajir">TAJIR</button>
+    <button class="mode-btn premini" data-mode="premini">PREMINI</button>
+    <button class="mode-btn guards" data-mode="guards">GUARDS</button>
+    <button class="mode-btn infi" data-mode="infi">INFI</button>
+
+    <button class="ctrl-btn" id="resetBtn">Reset</button>
+    <button class="ctrl-btn" id="shuffleBtn">Shuffle</button>
+  </div>
+
+  <div class="gridWrap">
+    <div class="grid" id="grid"></div>
+  </div>
+</div>
+
+<!-- POPUP -->
+<div class="popup" id="popup">
+  <div class="popup-content" id="popupContent">
+    <span class="secretBadge">SECRET!</span>
+    <h2>🎉 CONGRATS! 🎉</h2>
+    <img id="popupImg" class="popupPrizeImg" alt="">
+    <div id="popupName" class="popupPrizeName"></div>
+    <button class="close-btn" id="popupOkBtn">OK</button>
+  </div>
+</div>
+
+<!-- ADMIN UI -->
+<div id="adminUI" style="display:none;">
+  <div class="adminWrap">
+    <div class="adminHeader">
+      <div>
+        <h2>Admin Hadiah (Gambar + Rarity)</h2>
+        <div class="small">Atur langsung di website. Tersimpan di browser PC kamu (LocalStorage).</div>
+      </div>
+      <div class="adminBtns">
+        <button class="aBtn alt" id="addItemBtn">+ Tambah Hadiah</button>
+        <button class="aBtn good" id="saveBtn">Save</button>
+        <button class="aBtn" id="exportBtn">Export</button>
+        <button class="aBtn" id="importBtn">Import</button>
+        <button class="aBtn warn" id="resetDefaultBtn">Reset Default</button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" data-mode="royal">ROYAL</div>
+      <div class="tab" data-mode="tajir">TAJIR</div>
+      <div class="tab" data-mode="premini">PREMINI</div>
+      <div class="tab" data-mode="guards">GUARDS</div>
+      <div class="tab" data-mode="infi">INFI</div>
+    </div>
+
+    <div class="help">
+      • Set <b>Jumlah (rarity)</b> = berapa kotak yang berisi hadiah ini.<br>
+      • Total: ROYAL/TAJIR/PREMINI = <b>15</b>, GUARDS = <b>6</b>, INFI = <b>4</b>.<br>
+      • Klik <b>Save</b>, lalu buka overlay normal (tanpa <b>?admin=1</b>).
+    </div>
+
+    <div class="rows" id="rows"></div>
+  </div>
+</div>
+
+<script>
+  const DEFAULT_CONFIG = {
+    royal: [
+      { name:"Coin 300", count:6, img:null },
+      { name:"Gem 10", count:5, img:null },
+      { name:"Royal Pack", count:3, img:null },
+      { name:"Lucky Spin", count:1, img:null }
+    ],
+    tajir: [
+      { name:"Coin 1000", count:7, img:null },
+      { name:"Gem 30", count:5, img:null },
+      { name:"Mega Box", count:2, img:null },
+      { name:"SECRET", count:1, img:null }
+    ],
+    premini: [
+      { name:"Coin 150", count:6, img:null },
+      { name:"Gem 5", count:5, img:null },
+      { name:"Mini Pack", count:3, img:null },
+      { name:"Lucky Mini", count:1, img:null }
+    ],
+    guards: [
+      { name:"Guard Box", count:3, img:null },
+      { name:"Guard Token", count:2, img:null },
+      { name:"GUARD SECRET", count:1, img:null }
+    ],
+    infi: [
+      { name:"Infi Box", count:2, img:null },
+      { name:"Infi Token", count:1, img:null },
+      { name:"INFI SECRET", count:1, img:null }
+    ]
+  };
+
+  const PRICE = { royal:"5R", tajir:"10R", premini:"20R", guards:"-", infi:"-" };
+  const STORAGE_KEY = "fun_box_config_v8_nohemat";
+
+  const MODE_TOTAL = { royal:15, tajir:15, premini:15, guards:6, infi:4 };
+
+  function loadConfig(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return structuredClone(DEFAULT_CONFIG);
+      return JSON.parse(raw);
+    }catch(e){
+      return structuredClone(DEFAULT_CONFIG);
+    }
+  }
+  function saveConfig(cfg){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+  }
+
+  let CONFIG = loadConfig();
+
+  const grid = document.getElementById("grid");
+  const popup = document.getElementById("popup");
+  const popupContent = document.getElementById("popupContent");
+  const popupImg = document.getElementById("popupImg");
+  const popupName = document.getElementById("popupName");
+  const popupOkBtn = document.getElementById("popupOkBtn");
+  const modeNote = document.getElementById("modeNote");
+
+  const sfxWin = document.getElementById("sfxWin");
+  const sfxSecret = document.getElementById("sfxSecret");
+
+  const modeBtns = document.querySelectorAll(".mode-btn");
+  const resetBtn = document.getElementById("resetBtn");
+  const shuffleBtn = document.getElementById("shuffleBtn");
+
+  let mode = "royal";
+  let slots = [];
+  let pickedIndex = null;
+  let isRevealing = false;
+  let isShuffling = false;
+
+  const STAGGER_MS = 80;
+  const POPUP_DELAY_MS = 260;
+  const SHUFFLE_ANIM_MS = 1200;
+  const FLASH_MS = 90;
+  const FOCUS_DELAY_MS = 650;
+  const FOCUS_AFTER_REVEAL_MS = 240;
+
+  function fisherYatesShuffle(arr){
+    for(let i=arr.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [arr[i],arr[j]] = [arr[j],arr[i]];
+    }
+    return arr;
+  }
+
+  function getColsForCount(n){
+    if(n === 6) return 3; // 3 atas 3 bawah
+    if(n === 4) return 2; // 2 atas 2 bawah
+    return 5;
+  }
+
+  function applyGridCols(){
+    const cols = getColsForCount(slots.length || (MODE_TOTAL[mode] ?? 15));
+    grid.style.setProperty("--cols", String(cols));
+  }
+
+  function buildSlotsFromConfig(modeKey){
+    const items = CONFIG[modeKey] || [];
+    const expanded = [];
+    for(const it of items){
+      const c = Math.max(0, parseInt(it.count || 0, 10));
+      for(let k=0;k<c;k++){
+        expanded.push({ name: it.name || "Hadiah", img: it.img || null });
+      }
+    }
+
+    const target = MODE_TOTAL[modeKey] ?? 15;
+    while(expanded.length < target) expanded.push({ name:"?", img:null });
+    while(expanded.length > target) expanded.pop();
+    return fisherYatesShuffle(expanded);
+  }
+
+  function enableControls(enabled){
+    resetBtn.disabled = !enabled;
+    shuffleBtn.disabled = !enabled;
+    modeBtns.forEach(b => b.disabled = !enabled);
+  }
+
+  function resetRound(){
+    pickedIndex = null;
+    isRevealing = false;
+    isShuffling = false;
+    enableControls(true);
+
+    grid.classList.remove("dim-other");
+    slots = buildSlotsFromConfig(mode);
+    applyGridCols();
+    render(false);
+  }
+
+  function setMode(newMode){
+    if(isShuffling || isRevealing) return;
+    mode = newMode;
+    modeBtns.forEach(b => b.classList.toggle("active", b.dataset.mode === newMode));
+    modeNote.textContent = `Mode: ${newMode.toUpperCase()} (${PRICE[newMode] || "-"})`;
+    resetRound();
+  }
+
+  function shuffleOnly(){
+    if(isRevealing || pickedIndex !== null || isShuffling) return;
+
+    isShuffling = true;
+    enableControls(false);
+    render(false);
+
+    const overlay = document.createElement("div");
+    overlay.className = "shuffleOverlay";
+    overlay.innerHTML = `🔀 SHUFFLING <span class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>`;
+    grid.appendChild(overlay);
+    grid.classList.add("shuffling");
+
+    let flashTimer = setInterval(() => {
+      const boxes = grid.querySelectorAll(".box");
+      boxes.forEach(b => b.classList.remove("flash"));
+      const rand = Math.floor(Math.random()*slots.length);
+      if(boxes[rand]) boxes[rand].classList.add("flash");
+    }, FLASH_MS);
+
+    setTimeout(() => {
+      clearInterval(flashTimer);
+      grid.querySelectorAll(".box").forEach(b => b.classList.remove("flash"));
+
+      slots = fisherYatesShuffle(slots);
+
+      grid.classList.remove("shuffling");
+      overlay.remove();
+
+      render(false);
+      enableControls(true);
+      isShuffling = false;
+    }, SHUFFLE_ANIM_MS);
+  }
+
+  function openPopup(prize){
+    const isSecret = String(prize?.name || "").toLowerCase().includes("secret");
+    popupContent.classList.toggle("secret-mode", isSecret);
+
+    popupImg.src = prize.img || makeEmojiDataUrl("🎁");
+    popupName.textContent = prize.name || "Hadiah!";
+
+    popup.style.display = "flex";
+    document.body.classList.add("modal-open");
+
+    try{
+      const a = isSecret ? sfxSecret : sfxWin;
+      a.currentTime = 0;
+      a.play();
+    }catch{}
+  }
+
+  function closePopup(){
+    popup.style.display = "none";
+    document.body.classList.remove("modal-open");
+    grid.classList.remove("dim-other");
+    grid.querySelectorAll(".box").forEach(b => b.classList.remove("final-focus"));
+  }
+
+  function pick(i){
+    if(pickedIndex !== null || isRevealing || isShuffling) return;
+
+    pickedIndex = i;
+    isRevealing = true;
+    enableControls(false);
+
+    render(true);
+
+    const totalRevealTime = (slots.length * STAGGER_MS) + 520;
+
+    setTimeout(() => {
+      const boxes = grid.querySelectorAll(".box");
+      grid.classList.add("dim-other");
+      if(boxes[pickedIndex]) boxes[pickedIndex].classList.add("final-focus");
+
+      setTimeout(() => {
+        openPopup(slots[pickedIndex]);
+        enableControls(true);
+      }, FOCUS_DELAY_MS);
+
+    }, totalRevealTime + POPUP_DELAY_MS + FOCUS_AFTER_REVEAL_MS);
+  }
+
+  function render(reveal){
+    grid.innerHTML = "";
+    for(let i=0;i<slots.length;i++){
+      const div = document.createElement("div");
+      div.className = "box";
+      if(isRevealing || isShuffling) div.classList.add("disabled");
+      if(reveal) div.classList.add("revealed");
+      if(pickedIndex === i) div.classList.add("picked");
+
+      div.style.setProperty("--d", (i * STAGGER_MS) + "ms");
+
+      const prize = slots[i];
+      const imgSrc = prize?.img || makeEmojiDataUrl("🎁");
+
+      div.innerHTML = `
+        <div class="tag">PICK</div>
+        <div class="num">${i+1}</div>
+        <div class="gift">
+          <img class="giftImg" src="${escapeAttr(imgSrc)}" alt="">
+          <div class="giftName">${escapeHtml(prize?.name || "Hadiah")}</div>
+        </div>
+      `;
+      div.onclick = () => pick(i);
+      grid.appendChild(div);
+    }
+  }
+
+  popupOkBtn.addEventListener("click", closePopup);
+  popup.addEventListener("click", (e) => { if(e.target === popup) closePopup(); });
+  window.addEventListener("keydown", (e) => { if(e.key === "Escape" && popup.style.display === "flex") closePopup(); });
+
+  function makeEmojiDataUrl(emoji){
+    const svg =
+      `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256">
+        <rect width="100%" height="100%" rx="40" ry="40" fill="white"/>
+        <text x="50%" y="58%" font-size="140" text-anchor="middle" dominant-baseline="middle">${emoji}</text>
+      </svg>`;
+    return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+  }
+
+  function escapeHtml(str){
+    return String(str)
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+  function escapeAttr(str){
+    return String(str)
+      .replaceAll('"',"&quot;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;");
+  }
+
+  // ==========================
+  // ADMIN UI
+  // ==========================
+  const isAdmin = new URLSearchParams(location.search).get("admin") === "1";
+  const overlayUI = document.getElementById("overlayUI");
+  const adminUI = document.getElementById("adminUI");
+  const rowsEl = document.getElementById("rows");
+  const tabEls = document.querySelectorAll(".tab");
+
+  const addItemBtn = document.getElementById("addItemBtn");
+  const saveBtn = document.getElementById("saveBtn");
+  const exportBtn = document.getElementById("exportBtn");
+  const importBtn = document.getElementById("importBtn");
+  const resetDefaultBtn = document.getElementById("resetDefaultBtn");
+
+  let adminMode = "royal";
+
+  function fileToDataUrl(file){
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result));
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+  }
+
+  function adminSetMode(m){
+    adminMode = m;
+    tabEls.forEach(t => t.classList.toggle("active", t.dataset.mode === m));
+    adminRender();
+  }
+
+  function adminRender(){
+    rowsEl.innerHTML = "";
+    const items = CONFIG[adminMode] || [];
+
+    items.forEach((it, idx) => {
+      const row = document.createElement("div");
+      row.className = "row";
+
+      const thumb = document.createElement("div");
+      thumb.className = "thumb";
+      const img = document.createElement("img");
+      img.src = it.img || makeEmojiDataUrl("🎁");
+      thumb.appendChild(img);
+
+      const nameWrap = document.createElement("div");
+      const nameInput = document.createElement("input");
+      nameInput.className = "in";
+      nameInput.placeholder = "Nama hadiah";
+      nameInput.value = it.name || "";
+      const mini = document.createElement("div");
+      mini.className = "mini";
+      mini.textContent = "Upload gambar atau biarkan default 🎁";
+      nameWrap.appendChild(nameInput);
+      nameWrap.appendChild(mini);
+
+      const file = document.createElement("input");
+      file.type = "file";
+      file.accept = "image/*";
+      file.style.width = "140px";
+
+      const del = document.createElement("button");
+      del.className = "del";
+      del.textContent = "Hapus";
+
+      const countInput = document.createElement("input");
+      countInput.className = "count";
+      countInput.type = "number";
+      countInput.min = "0";
+      countInput.max = String(MODE_TOTAL[adminMode] ?? 15);
+      countInput.step = "1";
+      countInput.value = String(it.count ?? 0);
+
+      const countWrap = document.createElement("div");
+      countWrap.className = "countWrap";
+
+      const countLabel = document.createElement("div");
+      countLabel.className = "countLabel";
+      countLabel.textContent = "Jumlah (rarity)";
+
+      const countHint = document.createElement("div");
+      countHint.className = "countHint";
+      const totalMode = MODE_TOTAL[adminMode] ?? 15;
+      const pct0 = Math.round(((parseInt(countInput.value||"0",10)) / totalMode) * 100);
+      countHint.textContent = `${countInput.value}/${totalMode} ≈ ${pct0}%`;
+
+      countWrap.appendChild(countLabel);
+      countWrap.appendChild(countInput);
+      countWrap.appendChild(countHint);
+
+      const rightPack = document.createElement("div");
+      rightPack.className = "rightPack";
+      rightPack.appendChild(countWrap);
+      rightPack.appendChild(file);
+      rightPack.appendChild(del);
+
+      nameInput.addEventListener("input", () => {
+        CONFIG[adminMode][idx].name = nameInput.value;
+      });
+
+      countInput.addEventListener("input", () => {
+        CONFIG[adminMode][idx].count = parseInt(countInput.value || "0", 10);
+        const totalMode2 = MODE_TOTAL[adminMode] ?? 15;
+        const pct = Math.round(((parseInt(countInput.value||"0",10)) / totalMode2) * 100);
+        countHint.textContent = `${countInput.value}/${totalMode2} ≈ ${pct}%`;
+      });
+
+      file.addEventListener("change", async () => {
+        const f = file.files?.[0];
+        if(!f) return;
+        const dataUrl = await fileToDataUrl(f);
+        CONFIG[adminMode][idx].img = dataUrl;
+        img.src = dataUrl;
+      });
+
+      del.addEventListener("click", () => {
+        CONFIG[adminMode].splice(idx, 1);
+        adminRender();
+      });
+
+      row.appendChild(thumb);
+      row.appendChild(nameWrap);
+      row.appendChild(rightPack);
+      rowsEl.appendChild(row);
+    });
+
+    const totalNeed = MODE_TOTAL[adminMode] ?? 15;
+    const totalNow = (CONFIG[adminMode] || []).reduce((s,it)=>s + (parseInt(it.count||0,10)||0), 0);
+
+    const info = document.createElement("div");
+    info.className = "help";
+    info.innerHTML = `Total kotak untuk mode <b>${adminMode.toUpperCase()}</b>: <b>${totalNow}</b> (harus <b>${totalNeed}</b>).`;
+    rowsEl.appendChild(info);
+  }
+
+  function validateAll(){
+    const modes = Object.keys(MODE_TOTAL);
+    const errs = [];
+    for(const m of modes){
+      const need = MODE_TOTAL[m];
+      const total = (CONFIG[m]||[]).reduce((s,it)=>s + (parseInt(it.count||0,10)||0), 0);
+      if(total !== need) errs.push(`${m.toUpperCase()} total ${total} (harus ${need})`);
+    }
+    return errs;
+  }
+
+  addItemBtn?.addEventListener("click", () => {
+    CONFIG[adminMode] = CONFIG[adminMode] || [];
+    CONFIG[adminMode].push({ name:"Hadiah Baru", count:1, img:null });
+    adminRender();
+  });
+
+  saveBtn?.addEventListener("click", () => {
+    const errs = validateAll();
+    if(errs.length){
+      alert("Belum bisa Save. Perbaiki dulu:\n- " + errs.join("\n- "));
+      return;
+    }
+    saveConfig(CONFIG);
+    alert("Saved! Sekarang buka overlay normal (hapus ?admin=1).");
+  });
+
+  exportBtn?.addEventListener("click", async () => {
+    try{
+      await navigator.clipboard.writeText(JSON.stringify(CONFIG));
+      alert("Export berhasil: config dicopy ke clipboard.\nSimpan di Notes/WA sebagai backup.");
+    }catch{
+      alert("Gagal copy otomatis. Coba browser lain atau copy manual.");
+    }
+  });
+
+  importBtn?.addEventListener("click", () => {
+    const raw = prompt("Paste config JSON hasil Export di sini:");
+    if(!raw) return;
+    try{
+      const cfg = JSON.parse(raw);
+      CONFIG = cfg;
+      saveConfig(CONFIG);
+      adminRender();
+      alert("Import OK!");
+    }catch(e){
+      alert("JSON tidak valid.");
+    }
+  });
+
+  resetDefaultBtn?.addEventListener("click", () => {
+    if(!confirm("Reset ke default? Ini menghapus setting yang sekarang di browser.")) return;
+    CONFIG = structuredClone(DEFAULT_CONFIG);
+    saveConfig(CONFIG);
+    adminRender();
+  });
+
+  tabEls.forEach(t => t.addEventListener("click", () => adminSetMode(t.dataset.mode)));
+
+  if(isAdmin){
+    overlayUI.style.display = "none";
+    adminUI.style.display = "block";
+    adminRender();
+  }else{
+    overlayUI.style.display = "block";
+    adminUI.style.display = "none";
+
+    modeBtns.forEach(btn => btn.addEventListener("click", () => setMode(btn.dataset.mode)));
+    resetBtn.addEventListener("click", resetRound);
+    shuffleBtn.addEventListener("click", shuffleOnly);
+
+    resetRound();
+  }
+</script>
+</body>
+</html>
