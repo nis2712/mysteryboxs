@@ -86,6 +86,13 @@
     justify-content:center;
     padding:14px 12px 26px;
     position:relative;
+    transform-origin:center;
+  }
+
+  /* ✅ Slow zoom to picked (whole grid subtle) */
+  .grid.zoom-on{
+    transition: transform 950ms cubic-bezier(.18,.9,.2,1);
+    transform: scale(1.035);
   }
 
   .box{
@@ -112,6 +119,7 @@
     font-weight:1000;
     color:var(--text);
     line-height:1;
+    text-transform:uppercase;
   }
 
   .gift{ margin-top:10px; display:none; width:100%; }
@@ -120,7 +128,7 @@
     object-fit:contain;
     filter: drop-shadow(0 6px 10px rgba(0,0,0,.18));
     opacity:0;
-    transform: translateY(6px) scale(.98);
+    transform: translateY(10px) scale(.96);
   }
   .giftName{
     margin-top:6px;
@@ -128,15 +136,16 @@
     font-weight:1000;
     color:var(--text);
     opacity:0;
-    transform: translateY(6px);
+    transform: translateY(10px);
   }
 
   .box.revealed{ background:var(--open); }
   .box.revealed .gift{ display:block; }
 
+  /* ✅ Reveal animation lebih lambat */
   .box.revealed .giftImg,
   .box.revealed .giftName{
-    animation: revealPop .45s cubic-bezier(.2,.85,.2,1) forwards;
+    animation: revealPop .95s cubic-bezier(.15,.9,.2,1) forwards;
     animation-delay: var(--d);
     will-change: transform, opacity;
   }
@@ -212,10 +221,27 @@
     filter: blur(2px) brightness(.72);
     transform: scale(.98);
   }
+
+  /* ✅ Slow zoom on picked box */
   .box.final-focus{
-    transform:scale(1.12);
+    transition: transform 980ms cubic-bezier(.18,.9,.2,1), box-shadow 980ms cubic-bezier(.18,.9,.2,1);
+    transform:scale(1.16);
     z-index:6;
     box-shadow: 0 14px 30px rgba(0,0,0,.28), 0 0 0 8px rgba(255,215,0,.22), 0 0 28px rgba(255,215,0,.55);
+  }
+
+  /* ✅ Screen shake halus saat terakhir kebuka */
+  .gridWrap.shake-soft{
+    animation: shakeSoft .45s ease-in-out 1;
+  }
+  @keyframes shakeSoft{
+    0%{ transform: translate(0,0); }
+    15%{ transform: translate(-2px, 1px); }
+    30%{ transform: translate(2px, -1px); }
+    45%{ transform: translate(-2px, -1px); }
+    60%{ transform: translate(2px, 1px); }
+    75%{ transform: translate(-1px, 0px); }
+    100%{ transform: translate(0,0); }
   }
 
   .popup{
@@ -424,6 +450,8 @@
 
 <audio id="sfxWin" src="win.mp3" preload="auto"></audio>
 <audio id="sfxSecret" src="secret.mp3" preload="auto"></audio>
+<!-- ✅ suara tick per kotak (siapkan file tick.mp3 di folder yang sama) -->
+<audio id="sfxTick" src="tick.mp3" preload="auto"></audio>
 
 <!-- OVERLAY UI -->
 <div id="overlayUI">
@@ -441,7 +469,7 @@
     <button class="ctrl-btn" id="shuffleBtn">Shuffle</button>
   </div>
 
-  <div class="gridWrap">
+  <div class="gridWrap" id="gridWrap">
     <div class="grid" id="grid"></div>
   </div>
 </div>
@@ -544,6 +572,7 @@
 
   let CONFIG = loadConfig();
 
+  const gridWrap = document.getElementById("gridWrap");
   const grid = document.getElementById("grid");
   const popup = document.getElementById("popup");
   const popupContent = document.getElementById("popupContent");
@@ -554,6 +583,7 @@
 
   const sfxWin = document.getElementById("sfxWin");
   const sfxSecret = document.getElementById("sfxSecret");
+  const sfxTick = document.getElementById("sfxTick");
 
   const modeBtns = document.querySelectorAll(".mode-btn");
   const resetBtn = document.getElementById("resetBtn");
@@ -565,11 +595,12 @@
   let isRevealing = false;
   let isShuffling = false;
 
-  const STAGGER_MS = 80;
-  const POPUP_DELAY_MS = 260;
+  // ✅ lebih lambat & dramatis
+  const STAGGER_MS = 280;
+  const POPUP_DELAY_MS = 420;
   const SHUFFLE_ANIM_MS = 1200;
   const FLASH_MS = 90;
-  const FOCUS_DELAY_MS = 650;
+  const FOCUS_DELAY_MS = 950;
   const FOCUS_AFTER_REVEAL_MS = 240;
 
   function fisherYatesShuffle(arr){
@@ -589,6 +620,12 @@
   function applyGridCols(){
     const cols = getColsForCount(slots.length || (MODE_TOTAL[mode] ?? 15));
     grid.style.setProperty("--cols", String(cols));
+  }
+
+  // ✅ label huruf (15: A–O, 6: A–F, 4: A–D)
+  function labelFromIndex(i){
+    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    return letters[i] || "?";
   }
 
   function buildSlotsFromConfig(modeKey){
@@ -619,7 +656,8 @@
     isShuffling = false;
     enableControls(true);
 
-    grid.classList.remove("dim-other");
+    grid.classList.remove("dim-other","zoom-on");
+    gridWrap.classList.remove("shake-soft");
     slots = buildSlotsFromConfig(mode);
     applyGridCols();
     render(false);
@@ -668,6 +706,18 @@
     }, SHUFFLE_ANIM_MS);
   }
 
+  // ✅ play tick safely (pool biar gak putus-putus)
+  const tickPool = Array.from({length: 6}, () => new Audio(sfxTick?.src || ""));
+  let tickPtr = 0;
+  function playTick(){
+    try{
+      const a = tickPool[tickPtr++ % tickPool.length];
+      a.volume = 0.85;
+      a.currentTime = 0;
+      a.play();
+    }catch{}
+  }
+
   function openPopup(prize){
     const isSecret = String(prize?.name || "").toLowerCase().includes("secret");
     popupContent.classList.toggle("secret-mode", isSecret);
@@ -688,7 +738,8 @@
   function closePopup(){
     popup.style.display = "none";
     document.body.classList.remove("modal-open");
-    grid.classList.remove("dim-other");
+    grid.classList.remove("dim-other","zoom-on");
+    gridWrap.classList.remove("shake-soft");
     grid.querySelectorAll(".box").forEach(b => b.classList.remove("final-focus"));
   }
 
@@ -699,12 +750,29 @@
     isRevealing = true;
     enableControls(false);
 
+    // ✅ tick per box reveal (selama reveal berlangsung)
+    for(let k=0;k<slots.length;k++){
+      setTimeout(() => playTick(), k * STAGGER_MS);
+    }
+
     render(true);
 
     const totalRevealTime = (slots.length * STAGGER_MS) + 520;
 
+    // ✅ screen shake halus saat reveal terakhir selesai
+    setTimeout(() => {
+      gridWrap.classList.remove("shake-soft");
+      void gridWrap.offsetWidth; // restart anim
+      gridWrap.classList.add("shake-soft");
+    }, totalRevealTime + 40);
+
     setTimeout(() => {
       const boxes = grid.querySelectorAll(".box");
+
+      // ✅ slow zoom to picked (grid)
+      grid.classList.add("zoom-on");
+
+      // ✅ dim others + fokus box picked
       grid.classList.add("dim-other");
       if(boxes[pickedIndex]) boxes[pickedIndex].classList.add("final-focus");
 
@@ -732,7 +800,7 @@
 
       div.innerHTML = `
         <div class="tag">PICK</div>
-        <div class="num">${i+1}</div>
+        <div class="num">${labelFromIndex(i)}</div>
         <div class="gift">
           <img class="giftImg" src="${escapeAttr(imgSrc)}" alt="">
           <div class="giftName">${escapeHtml(prize?.name || "Hadiah")}</div>
